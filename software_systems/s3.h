@@ -35,14 +35,16 @@ static inline void reap()
 }
 
 ///Shell I/O and related functions (add more as appropriate)
-void read_command_line(char line[]);
-void construct_shell_prompt(char shell_prompt[]);
+void read_command_line(char line[], char lwd[]);
+void construct_shell_prompt(char shell_prompt[], char lwd[]);
 void parse_command(char line[], char *args[], int *argsc);
 
 ///Child functions (add more as appropriate)
 void child(char *args[], int argsc);
-void child_with_output_redirected(char operator, char* args[], int* argsc);
-void child_with_input_redirected(char operator, char* args[], int* argsc);
+void child_with_output_redirected(char* file_write ,char * operator, char* args[], int argsc);
+void child_with_input_redirected(char* file_read ,char * operator, char* args[], int argsc);
+void child_with_input_output_redirected(char* file_read ,char* file_write,char * operator, char* args[], int argsc);
+
 
 ///Program launching functions (add more as appropriate)
 void launch_program(char *args[], int argsc);
@@ -50,10 +52,13 @@ void launch_program(char *args[], int argsc);
 
 //command with redirection
 
-void* command_with_redirection(char line[]); // void * correct?
+int command_with_redirection(char line[]);
 //Redirection
 void launch_program_with_redirection(char* args[], int argsc);
 
-char identify_operator(char * args[]);
+char * identify_operator(char * args[], int argsc);
+char * identify_file_to_read(char * args[], int argsc);
+char * identify_file_to_write(char * args[], int argsc);
+
 
 #endif
