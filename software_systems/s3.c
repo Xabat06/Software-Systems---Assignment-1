@@ -49,6 +49,11 @@ void parse_command(char line[], char *args[], int *argsc)
     }
     
     args[*argsc] = NULL; ///args must be null terminated
+
+    /*int i = 0; // testing what args is:
+    while(args[i] != NULL){
+        printf("%c", *args[i++]);
+    }*/
 }
 
 ///Launch related functions
@@ -94,30 +99,29 @@ void launch_program(char *args[], int argsc)
 
 
 }
-
+//REDIRECTION functions
 void launch_program_with_redirection(char *args[], int argsc){
-
+    
     int rc = fork();
     if(rc < 0){
         fprintf(stderr,"fork failed\n");
         exit(1);
     }
     else if(rc == 0){//in child process
-
         char * operator = identify_operator(args, argsc);
-        char * file_rd = identify_file_to_read(args, argsc);
-        char * file_wr = identify_file_to_write(args, argsc);
-        //here we need to check if either side of the operator are there files, if both sides then we need to redirect input and output
-        //else we redirect only one
+        char * file_to_redirect_to = identify_file_to_redirect_to(args, argsc,operator);
 
-        if(file_rd != NULL && file_wr == NULL){
-            child_with_input_redirected(file_rd,operator,args,argsc);
+        int i = should_append(args,operator);
+
+        clean_args(args);
+
+        if(*operator == '<'){
+
+            child_with_input_redirected(file_to_redirect_to, operator,args,argsc);
         }
-        else if(file_rd == NULL && file_wr != NULL){
-            child_with_output_redirected(file_wr, operator, args, argsc);
-        }
-        else if(file_rd != NULL && file_wr != NULL){
-            child_with_input_output_redirected(file_rd, file_wr ,operator,args,argsc);
+        else if(*operator == '>'){
+            
+            child_with_output_redirected(file_to_redirect_to, operator, args, argsc, i);
         }
         else{
             fprintf(stderr, "error\n");
@@ -125,40 +129,35 @@ void launch_program_with_redirection(char *args[], int argsc){
     }
     else{//in parent process
         wait(NULL);
+
     }
 
 }
 
-void child_with_input_redirected(char* file_read ,char * operator ,char * args [], int argsc){
+void child_with_input_redirected(char* rd_file ,char * operator ,char * args [], int argsc){
 
-
-    int file_fd = open(file_read, O_RDONLY);
-    dup2(file_fd, STDOUT_FILENO);
-
+    int file_fd = open(rd_file, O_RDONLY);
+    dup2(file_fd, STDIN_FILENO);
+    //should we close ?
     execvp(args[ARG_PROGNAME], args);
 
 
 }
 
-void child_with_output_redirected(char* file_write, char * operator, char* args [], int argsc){
+void child_with_output_redirected(char* rd_file, char * operator, char* args [], int argsc, int append){
 
-    int file_fd = open(file_write, O_WRONLY | O_CREAT);
-    dup2(file_fd, STDIN_FILENO);
-    
-    execvp(args[ARG_PROGNAME],  args);
+    int file_fd = 0;
 
-}
+    if(append == 0){
+        file_fd = open(rd_file, O_WRONLY | O_CREAT); // || or |, assume its | as flag values?
+    }
+    else{
+        file_fd = open(rd_file, O_WRONLY| O_APPEND | O_CREAT);
+    }
 
-void child_with_input_output_redirected(char* file_read ,char* file_write, char * operator, char* args [], int argsc){
-
-    int file_fd = open(file_write, O_WRONLY | O_CREAT);
-    dup2(file_fd, STDIN_FILENO);
-
-    file_fd = open(file_read, O_RDONLY);
     dup2(file_fd, STDOUT_FILENO);
-
+    //should we close ?
     execvp(args[ARG_PROGNAME],  args);
-
 
 }
 
@@ -171,18 +170,12 @@ char* identify_operator (char* args [], int argsc){
 
         if(*args[i] == '>'){
             operator = ">";
-            
-            if((*(args[i]+1)) == '>'){
-                operator = ">>";
-            }
+
             return operator;
         }
         else if(*args[i] == '<'){
             operator = "<";
 
-            if((*(args[i]+1)) == '<'){
-                operator = "<<";
-            }
             return operator;
         }
         else{
@@ -192,7 +185,7 @@ char* identify_operator (char* args [], int argsc){
     return NULL;
 }
 
-char* identify_file_to_write (char* args [],int argsc){
+char* identify_file_to_redirect_to (char* args [],int argsc, char* operator){
 
     //go to operator > return pointer to arg next to operator
     char* file;
@@ -200,7 +193,7 @@ char* identify_file_to_write (char* args [],int argsc){
 
     while(i<argsc){
 
-        if(*args[i] == '>'){
+        if(*args[i] == *operator){
 
             return args[i+1];
         }
@@ -208,34 +201,9 @@ char* identify_file_to_write (char* args [],int argsc){
             i++;
         }
     }
+
     return NULL; // if null no file to write to
    
-    
-}
-
-char* identify_file_to_read (char* args [],int argsc){
-
-    //go to operator if > and return pointer to arg before operator
-    //go to operator if < return pointer to arg after operator
-
-    char* operator;
-    int i = 0;
-
-    while(i<argsc){
-
-        if(*args[i] == '>'){
-        
-            return args[i-1]; // need to consider if user gives wrong input like just input > will this cause seg fault
-        }
-        else if(*args[i] == '<'){
-
-            return args[i+1];
-        }
-        else{
-            i++;
-        }
-    }
-    return NULL; // this means we aren't reading from a file
     
 }
 
@@ -243,7 +211,10 @@ int command_with_redirection(char line[]){
 
     for(int i = 0; i<strlen(line); i++){
 
-        if(line[i] == ('<' | '>')){
+        if(line[i] == '<'){
+            return 1;
+        }
+        else if(line[i] == '>'){
             return 1;
         }
 
@@ -252,22 +223,71 @@ int command_with_redirection(char line[]){
 
 }
 
-///Task 3 functions cd
-void init_lwd(char lwd[]) {
+int should_append(char* args[], char* operator){
+
+    int operator_found = 0;
+    int i = 0;
+
+    while(operator_found == 0){//should we worry about accessing out of bounds here? good practice
+
+        if(*args[i] == *operator){
+            operator_found = 1;
+        }
+        else{
+            i++;
+        }
+
+    }
+    if(args[i][1] == *operator){
+
+        return 1;
+    }
+    else{
+        return 0;
+    }
+
+}
+
+
+void clean_args(char *args[]){
+
+    int set_null = 0;
+    int i = 0;
+
+    while(args[i] != NULL){
+
+        if(*args[i] == '<'){
+            set_null = 1;
+        }
+        else if(*args[i] == '>'){
+            set_null = 1;
+        }
+        if(set_null == 1){
+            args[i] = NULL;
+            i++;
+        }
+        else{
+            i++;
+        }
+    }
+
+}
+
+//CD functions
+void init_lwd(char lwd[]){
     if (getcwd(lwd, MAX_PROMPT_LEN - 6) == NULL) {
         perror("getcwd failed");
         exit(1);
     }
 }
 
-int is_cd(char line[]) {
+int is_cd(char line[]){
     while (*line == ' ') line++;
 
     return (strncmp(line, "cd", 2) == 0 && (line[2] == ' ' || line[2] == '\0'));
 }
 
-void run_cd(char *args[], int argsc, char lwd[])
-{
+void run_cd(char *args[], int argsc, char lwd[]){
     char cwd[MAX_PROMPT_LEN - 6];
 
     if (getcwd(cwd, sizeof(cwd)) == NULL) {

@@ -41,9 +41,9 @@ void parse_command(char line[], char *args[], int *argsc);
 
 ///Child functions (add more as appropriate)
 void child(char *args[], int argsc);
-void child_with_output_redirected(char* file_write ,char * operator, char* args[], int argsc);
-void child_with_input_redirected(char* file_read ,char * operator, char* args[], int argsc);
-void child_with_input_output_redirected(char* file_read ,char* file_write,char * operator, char* args[], int argsc);
+void child_with_output_redirected(char* file_write ,char * op, char* args[], int argsc, int append);
+void child_with_input_redirected(char* file_read ,char * op, char* args[], int argsc);
+//void child_with_input_output_redirected(char* file_read ,char* file_write,char * op, char* args[], int argsc);
 
 
 ///Program launching functions (add more as appropriate)
@@ -57,8 +57,22 @@ int command_with_redirection(char line[]);
 void launch_program_with_redirection(char* args[], int argsc);
 
 char * identify_operator(char * args[], int argsc);
-char * identify_file_to_read(char * args[], int argsc);
-char * identify_file_to_write(char * args[], int argsc);
+
+char * identify_file_to_redirect_to(char * args[], int argsc, char* op);
+
+//int identify_if_append(char* args[], char* operator);
+
+
+
+void clean_args(char *args[]);
+
+int should_append(char* args[], char* operator);
+
+void init_lwd(char lwd[]);
+int is_cd(char line[]);
+void run_cd(char *args[], int argsc, char lwd[]);
+
+
 
 
 #endif
