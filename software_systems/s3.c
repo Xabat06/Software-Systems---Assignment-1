@@ -162,10 +162,10 @@ void child_with_output_redirected(char* rd_file, char * operator, char* args [],
     int file_fd = 0;
 
     if(append == 0){
-        file_fd = open(rd_file, O_WRONLY | O_CREAT); // || or |, assume its | as flag values?
+        file_fd = open(rd_file, O_WRONLY | O_CREAT | O_TRUNC, 0644); // || or |, assume its | as flag values?
     }
     else{
-        file_fd = open(rd_file, O_WRONLY| O_APPEND | O_CREAT);
+        file_fd = open(rd_file, O_WRONLY | O_CREAT | O_APPEND, 0644);
     }
 
     if (file_fd == -1) {
