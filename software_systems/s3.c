@@ -67,6 +67,9 @@ void child(char *args[], int argsc)
 
     execvp(args[ARG_PROGNAME],  args);
 
+    perror("execvp");
+    exit(1);
+
 }
 
 void launch_program(char *args[], int argsc)
@@ -97,8 +100,8 @@ void launch_program(char *args[], int argsc)
         wait(NULL);
     }
 
-
 }
+
 //REDIRECTION functions
 void launch_program_with_redirection(char *args[], int argsc){
     
@@ -137,10 +140,20 @@ void launch_program_with_redirection(char *args[], int argsc){
 void child_with_input_redirected(char* rd_file ,char * operator ,char * args [], int argsc){
 
     int file_fd = open(rd_file, O_RDONLY);
+
+    if (file_fd == -1) {
+        perror("open");
+        exit(1);
+    }
+
     dup2(file_fd, STDIN_FILENO);
-    //should we close ?
+    close(file_fd);
+    //should we close ? yes
+
     execvp(args[ARG_PROGNAME], args);
 
+    perror("execvp");
+    exit(1);
 
 }
 
@@ -155,9 +168,18 @@ void child_with_output_redirected(char* rd_file, char * operator, char* args [],
         file_fd = open(rd_file, O_WRONLY| O_APPEND | O_CREAT);
     }
 
+    if (file_fd == -1) {
+        perror("open");
+        exit(1);
+    }
+
     dup2(file_fd, STDOUT_FILENO);
+    close(file_fd);
     //should we close ?
     execvp(args[ARG_PROGNAME],  args);
+
+    perror("execvp");
+    exit(1);
 
 }
 
@@ -203,7 +225,6 @@ char* identify_file_to_redirect_to (char* args [],int argsc, char* operator){
     }
 
     return NULL; // if null no file to write to
-   
     
 }
 
@@ -228,7 +249,7 @@ int should_append(char* args[], char* operator){
     int operator_found = 0;
     int i = 0;
 
-    while(operator_found == 0){//should we worry about accessing out of bounds here? good practice
+    while(operator_found == 0 && args[i] != NULL) {  //should we worry about accessing out of bounds here? good practice
 
         if(*args[i] == *operator){
             operator_found = 1;
@@ -238,6 +259,9 @@ int should_append(char* args[], char* operator){
         }
 
     }
+
+    if (!operator_found) return 0;
+
     if(args[i][1] == *operator){
 
         return 1;
